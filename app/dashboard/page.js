@@ -30,6 +30,9 @@ export default function Dashboard() {
     router.push('/login')
   }
 
+  const isAdmin =
+    email === 'lideracademicoaifi@gmail.com'
+
   return (
     <main
       style={{
@@ -49,22 +52,33 @@ export default function Dashboard() {
 
       <button
         onClick={() => router.push('/examen')}
-        style={{
-          padding: '10px 20px',
-          cursor: 'pointer'
-        }}
+        style={{ padding: '10px 20px' }}
       >
         Ir al Examen
       </button>
 
       <br /><br />
 
+      {isAdmin && (
+        <>
+          <button
+            onClick={() => router.push('/admin')}
+            style={{
+              padding: '10px 20px',
+              background: '#111',
+              color: 'white'
+            }}
+          >
+            Panel Admin
+          </button>
+
+          <br /><br />
+        </>
+      )}
+
       <button
         onClick={logout}
-        style={{
-          padding: '10px 20px',
-          cursor: 'pointer'
-        }}
+        style={{ padding: '10px 20px' }}
       >
         Cerrar sesión
       </button>
