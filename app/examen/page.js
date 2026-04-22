@@ -87,12 +87,21 @@ export default function Examen() {
 
   async function saveResult() {
     const {
-      data: { user }
+      data: { user },
+      error: userError
     } = await supabase.auth.getUser()
 
-    if (!user) return
+    if (userError) {
+      alert(userError.message)
+      return
+    }
 
-    await supabase.from('exam_results').insert([
+    if (!user) {
+      alert('No hay usuario logueado')
+      return
+    }
+
+    const { error } = await supabase.from('exam_results').insert([
       {
         user_id: user.id,
         score: score,
@@ -101,6 +110,12 @@ export default function Examen() {
       }
     ])
 
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    alert('Resultado guardado correctamente')
     setSaved(true)
   }
 
@@ -144,7 +159,7 @@ export default function Examen() {
       <div style={{ padding: 30 }}>
         <h1>Resultado Final</h1>
         <p>Puntaje: {score}/100</p>
-        <p>Resultado guardado correctamente.</p>
+        <p>Intentando guardar resultado...</p>
       </div>
     )
   }
