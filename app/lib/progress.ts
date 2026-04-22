@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase } from './supabase'
 
 export async function addXP(userId: string, currentXP: number, add: number) {
   const newXP = currentXP + add
