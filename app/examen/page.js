@@ -36,6 +36,8 @@ export default function Examen() {
   const [current, setCurrent] = useState(0)
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [warnings, setWarnings] = useState(0)
+  const [cancelled, setCancelled] = useState(false)
 
   useEffect(() => {
     let timer
@@ -46,12 +48,34 @@ export default function Examen() {
       }, 1000)
     }
 
-    if (time === 0) {
+    if (time === 0 && started) {
       setFinished(true)
     }
 
     return () => clearInterval(timer)
-  }, [started, time, finished])
+  }, [started, finished, time])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && started && !finished) {
+        const newWarnings = warnings + 1
+        setWarnings(newWarnings)
+
+        alert('Advertencia: saliste de la pestaña (' + newWarnings + '/3)')
+
+        if (newWarnings >= 3) {
+          setCancelled(true)
+          setFinished(true)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [started, finished, warnings])
 
   const answerQuestion = (option) => {
     if (option === questions[current].answer) {
@@ -72,7 +96,18 @@ export default function Examen() {
       <div style={{ padding: 30 }}>
         <h1>Examen 🧠</h1>
         <p>Duración: 5 minutos</p>
-        <button onClick={() => setStarted(true)}>Iniciar examen</button>
+        <button onClick={() => setStarted(true)}>
+          Iniciar examen
+        </button>
+      </div>
+    )
+  }
+
+  if (cancelled) {
+    return (
+      <div style={{ padding: 30 }}>
+        <h1>Examen cancelado</h1>
+        <p>Detectamos múltiples salidas de la pestaña.</p>
       </div>
     )
   }
@@ -90,6 +125,7 @@ export default function Examen() {
     <div style={{ padding: 30 }}>
       <h1>Examen en curso</h1>
       <p>Tiempo restante: {time}s</p>
+      <p>Advertencias: {warnings}/3</p>
       <p>Pregunta {current + 1} de {questions.length}</p>
 
       <h2>{questions[current].question}</h2>
