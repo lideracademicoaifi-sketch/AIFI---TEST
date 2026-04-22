@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 const questions = [
   {
@@ -38,6 +39,7 @@ export default function Examen() {
   const [finished, setFinished] = useState(false)
   const [warnings, setWarnings] = useState(0)
   const [cancelled, setCancelled] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     let timer
@@ -76,6 +78,31 @@ export default function Examen() {
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [started, finished, warnings])
+
+  useEffect(() => {
+    if (finished && !saved) {
+      saveResult()
+    }
+  }, [finished])
+
+  async function saveResult() {
+    const {
+      data: { user }
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    await supabase.from('exam_results').insert([
+      {
+        user_id: user.id,
+        score: score,
+        cancelled: cancelled,
+        incidents: warnings
+      }
+    ])
+
+    setSaved(true)
+  }
 
   const answerQuestion = (option) => {
     if (option === questions[current].answer) {
@@ -117,6 +144,7 @@ export default function Examen() {
       <div style={{ padding: 30 }}>
         <h1>Resultado Final</h1>
         <p>Puntaje: {score}/100</p>
+        <p>Resultado guardado correctamente.</p>
       </div>
     )
   }
