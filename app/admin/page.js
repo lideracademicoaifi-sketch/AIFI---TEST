@@ -2,59 +2,63 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export default function Admin() {
   const [results, setResults] = useState([])
-  const router = useRouter()
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadData()
+    loadResults()
   }, [])
 
-  async function loadData() {
-    const { data } = await supabase
+  async function loadResults() {
+    const { data, error } = await supabase
       .from('exam_results')
       .select('*')
-      .order('created_at', { ascending: false })
+
+    if (error) {
+      alert(error.message)
+      setLoading(false)
+      return
+    }
 
     setResults(data || [])
+    setLoading(false)
   }
 
   return (
     <div style={{ padding: 30 }}>
       <h1>Panel Administrador</h1>
 
-      <button
-        onClick={() => router.push('/dashboard')}
-        style={{ marginBottom: 20 }}
-      >
-        Volver Dashboard
-      </button>
+      {loading && <p>Cargando...</p>}
 
-      <p>Total resultados: {results.length}</p>
+      {!loading && (
+        <>
+          <p>Total resultados: {results.length}</p>
 
-      <table border="1" cellPadding="10">
-        <thead>
-          <tr>
-            <th>Score</th>
-            <th>Cancelado</th>
-            <th>Incidentes</th>
-            <th>Fecha</th>
-          </tr>
-        </thead>
+          <table border="1" cellPadding="10">
+            <thead>
+              <tr>
+                <th>Score</th>
+                <th>Cancelado</th>
+                <th>Incidentes</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
 
-        <tbody>
-          {results.map((item) => (
-            <tr key={item.id}>
-              <td>{item.score}</td>
-              <td>{item.cancelled ? 'Sí' : 'No'}</td>
-              <td>{item.incidents}</td>
-              <td>{item.created_at}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            <tbody>
+              {results.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.score}</td>
+                  <td>{item.cancelled ? 'Sí' : 'No'}</td>
+                  <td>{item.incidents}</td>
+                  <td>{item.created_at}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   )
 }
