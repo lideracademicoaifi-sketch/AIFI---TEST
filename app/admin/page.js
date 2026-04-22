@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function Admin() {
   const [results, setResults] = useState([])
+  const router = useRouter()
 
   useEffect(() => {
-    loadResults()
+    loadData()
   }, [])
 
-  async function loadResults() {
+  async function loadData() {
     const { data } = await supabase
       .from('exam_results')
       .select('*')
@@ -22,6 +24,13 @@ export default function Admin() {
   return (
     <div style={{ padding: 30 }}>
       <h1>Panel Administrador</h1>
+
+      <button
+        onClick={() => router.push('/dashboard')}
+        style={{ marginBottom: 20 }}
+      >
+        Volver Dashboard
+      </button>
 
       <p>Total resultados: {results.length}</p>
 
