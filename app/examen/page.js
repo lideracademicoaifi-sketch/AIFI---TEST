@@ -1,45 +1,41 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-const questions = [
-  {
-    question: '¿Capital de Colombia?',
-    options: ['Bogotá', 'Cali', 'Medellín', 'Cartagena'],
-    answer: 'Bogotá'
-  },
-  {
-    question: '2 + 2 = ?',
-    options: ['3', '4', '5', '6'],
-    answer: '4'
-  },
-  {
-    question: 'Color del cielo normalmente',
-    options: ['Rojo', 'Azul', 'Verde', 'Negro'],
-    answer: 'Azul'
-  },
-  {
-    question: '¿Cuál es un mamífero?',
-    options: ['Tiburón', 'Perro', 'Lagarto', 'Águila'],
-    answer: 'Perro'
-  },
-  {
-    question: '¿Idioma oficial de Brasil?',
-    options: ['Español', 'Portugués', 'Francés', 'Italiano'],
-    answer: 'Portugués'
-  }
-]
-
 export default function Examen() {
+  const searchParams = useSearchParams()
+  const examId = searchParams.get('exam')
+
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(300)
+  const [questions, setQuestions] = useState([])
   const [current, setCurrent] = useState(0)
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
   const [warnings, setWarnings] = useState(0)
   const [cancelled, setCancelled] = useState(false)
+  const [loading, setLoading] = useState(true)
 
+  // 🔥 CARGAR PREGUNTAS SEGÚN EXAMEN
+  useEffect(() => {
+    if (!examId) return
+
+    loadQuestions()
+  }, [examId])
+
+  async function loadQuestions() {
+    const { data } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('exam_id', examId)
+
+    setQuestions(data || [])
+    setLoading(false)
+  }
+
+  // ⏱ TIMER
   useEffect(() => {
     let timer
 
@@ -49,13 +45,14 @@ export default function Examen() {
       }, 1000)
     }
 
-    if (time === 0) {
+    if (time === 0 && started) {
       setFinished(true)
     }
 
     return () => clearInterval(timer)
   }, [started, finished, time])
 
+  // 🚨 ANTI TRAMPA (CAMBIO DE PESTAÑA)
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && started && !finished) {
@@ -81,6 +78,7 @@ export default function Examen() {
       )
   }, [started, finished, warnings])
 
+  // 💾 GUARDAR RESULTADO
   useEffect(() => {
     if (finished) saveResult()
   }, [finished])
@@ -97,11 +95,13 @@ export default function Examen() {
         user_id: user.id,
         score,
         cancelled,
-        incidents: warnings
+        incidents: warnings,
+        exam_id: examId
       }
     ])
   }
 
+  // 🧠 RESPONDER
   function answer(option) {
     if (option === questions[current].answer) {
       setScore((prev) => prev + 20)
@@ -117,14 +117,29 @@ export default function Examen() {
   }
 
   const progress =
-    ((current + 1) / questions.length) * 100
+    questions.length > 0
+      ? ((current + 1) / questions.length) * 100
+      : 0
 
+  // ⛔ LOADING
+  if (loading) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h2>Cargando examen...</h2>
+        </div>
+      </main>
+    )
+  }
+
+  // ▶️ START
   if (!started) {
     return (
       <main style={styles.page}>
         <div style={styles.card}>
           <h1>Examen AIFI 🧠</h1>
           <p>Duración: 5 minutos</p>
+
           <button
             style={styles.primary}
             onClick={() => setStarted(true)}
@@ -136,6 +151,7 @@ export default function Examen() {
     )
   }
 
+  // ❌ CANCELADO
   if (cancelled) {
     return (
       <main style={styles.page}>
@@ -147,13 +163,26 @@ export default function Examen() {
     )
   }
 
+  // ✅ FINALIZADO
   if (finished) {
     return (
       <main style={styles.page}>
         <div style={styles.card}>
           <h1>Resultado Final</h1>
-          <h2>{score}/100</h2>
+          <h2>{score}</h2>
           <p>Resultado guardado correctamente</p>
+        </div>
+      </main>
+    )
+  }
+
+  // ❗ SIN PREGUNTAS
+  if (questions.length === 0) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h1>No hay preguntas</h1>
+          <p>Este examen está vacío</p>
         </div>
       </main>
     )
@@ -164,7 +193,7 @@ export default function Examen() {
       <div style={styles.card}>
         <h1>Examen en Curso</h1>
 
-        <p>Tiempo restante: {time}s</p>
+        <p>Tiempo: {time}s</p>
         <p>Advertencias: {warnings}/3</p>
 
         <div style={styles.bar}>
@@ -177,12 +206,20 @@ export default function Examen() {
         </div>
 
         <p>
-          Pregunta {current + 1} de {questions.length}
+          Pregunta {current + 1} de{' '}
+          {questions.length}
         </p>
 
-        <h2>{questions[current].question}</h2>
+        <h2>
+          {questions[current].question}
+        </h2>
 
-        {questions[current].options.map((op) => (
+        {[
+          questions[current].option_a,
+          questions[current].option_b,
+          questions[current].option_c,
+          questions[current].option_d
+        ].map((op) => (
           <button
             key={op}
             style={styles.option}
@@ -212,9 +249,7 @@ const styles = {
     maxWidth: 600,
     background: 'white',
     borderRadius: 20,
-    padding: 35,
-    boxShadow:
-      '0 20px 60px rgba(0,0,0,0.25)'
+    padding: 35
   },
 
   primary: {
@@ -223,9 +258,7 @@ const styles = {
     border: 'none',
     borderRadius: 12,
     background: '#0A36FF',
-    color: 'white',
-    fontSize: 16,
-    cursor: 'pointer'
+    color: 'white'
   },
 
   option: {
@@ -233,9 +266,7 @@ const styles = {
     padding: 14,
     marginTop: 12,
     border: '1px solid #ddd',
-    borderRadius: 12,
-    background: '#f9f9f9',
-    cursor: 'pointer'
+    borderRadius: 12
   },
 
   bar: {
