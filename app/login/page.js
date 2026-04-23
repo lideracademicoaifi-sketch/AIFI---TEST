@@ -43,7 +43,7 @@ export default function Login() {
       return
     }
 
-    alert('Cuenta creada. Ahora inicia sesión.')
+    alert('Cuenta creada correctamente')
     setLoading(false)
   }
 
@@ -51,41 +51,65 @@ export default function Login() {
     <main
       style={{
         minHeight: '100vh',
+        background:
+          'linear-gradient(135deg,#0A36FF,#111827)',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        padding: 20
       }}
     >
       <div
         style={{
-          width: '320px',
-          padding: '30px',
-          border: '1px solid #ddd',
-          borderRadius: '15px'
+          width: '100%',
+          maxWidth: 420,
+          background: 'white',
+          borderRadius: 22,
+          padding: 35,
+          boxShadow:
+            '0 20px 60px rgba(0,0,0,0.25)'
         }}
       >
-        <h1>AIFI LOGIN</h1>
+        <h1
+          style={{
+            color: '#0A36FF',
+            fontSize: 34,
+            marginBottom: 10
+          }}
+        >
+          AIFI LOGIN
+        </h1>
+
+        <p style={{ color: '#666', marginBottom: 25 }}>
+          Plataforma Inteligente de Exámenes
+        </p>
 
         <input
-          placeholder="Email"
+          placeholder="Correo electrónico"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={{
             width: '100%',
-            padding: '10px',
-            marginTop: '15px'
+            padding: 14,
+            marginBottom: 15,
+            borderRadius: 12,
+            border: '1px solid #ddd',
+            fontSize: 15
           }}
         />
 
         <input
-          placeholder="Password"
+          placeholder="Contraseña"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={{
             width: '100%',
-            padding: '10px',
-            marginTop: '15px'
+            padding: 14,
+            marginBottom: 20,
+            borderRadius: 12,
+            border: '1px solid #ddd',
+            fontSize: 15
           }}
         />
 
@@ -94,13 +118,14 @@ export default function Login() {
           disabled={loading}
           style={{
             width: '100%',
-            marginTop: '20px',
-            background: '#FF1A1A',
-            color: 'white',
-            padding: '12px',
-            borderRadius: '10px',
+            padding: 14,
             border: 'none',
-            cursor: 'pointer'
+            borderRadius: 12,
+            background: '#0A36FF',
+            color: 'white',
+            fontSize: 16,
+            cursor: 'pointer',
+            marginBottom: 12
           }}
         >
           {loading ? 'Cargando...' : 'Entrar'}
@@ -111,12 +136,12 @@ export default function Login() {
           disabled={loading}
           style={{
             width: '100%',
-            marginTop: '12px',
-            background: '#0A36FF',
-            color: 'white',
-            padding: '12px',
-            borderRadius: '10px',
+            padding: 14,
             border: 'none',
+            borderRadius: 12,
+            background: '#111827',
+            color: 'white',
+            fontSize: 16,
             cursor: 'pointer'
           }}
         >
