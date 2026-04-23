@@ -36,52 +36,100 @@ export default function Dashboard() {
   return (
     <main
       style={{
-        padding: '40px',
         minHeight: '100vh',
-        background: '#f5f7fa'
+        background:
+          'linear-gradient(135deg,#0A36FF,#111827)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
       }}
     >
-      <h1 style={{ color: '#0A36FF' }}>
-        Dashboard AIFI
-      </h1>
-
-      <p>Bienvenido:</p>
-      <p>{email}</p>
-
-      <br />
-
-      <button
-        onClick={() => router.push('/examen')}
-        style={{ padding: '10px 20px' }}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 500,
+          background: 'white',
+          borderRadius: 20,
+          padding: 35,
+          boxShadow:
+            '0 20px 60px rgba(0,0,0,0.25)'
+        }}
       >
-        Ir al Examen
-      </button>
+        <h1
+          style={{
+            marginBottom: 10,
+            color: '#0A36FF',
+            fontSize: 32
+          }}
+        >
+          Dashboard AIFI
+        </h1>
 
-      <br /><br />
+        <p style={{ color: '#555' }}>
+          Bienvenido
+        </p>
 
-      {isAdmin && (
-        <>
+        <p
+          style={{
+            fontWeight: 'bold',
+            marginBottom: 30
+          }}
+        >
+          {email}
+        </p>
+
+        <button
+          onClick={() => router.push('/examen')}
+          style={{
+            width: '100%',
+            padding: 14,
+            border: 'none',
+            borderRadius: 12,
+            background: '#0A36FF',
+            color: 'white',
+            fontSize: 16,
+            cursor: 'pointer',
+            marginBottom: 15
+          }}
+        >
+          Ir al Examen
+        </button>
+
+        {isAdmin && (
           <button
             onClick={() => router.push('/admin')}
             style={{
-              padding: '10px 20px',
-              background: '#111',
-              color: 'white'
+              width: '100%',
+              padding: 14,
+              border: 'none',
+              borderRadius: 12,
+              background: '#111827',
+              color: 'white',
+              fontSize: 16,
+              cursor: 'pointer',
+              marginBottom: 15
             }}
           >
             Panel Admin
           </button>
+        )}
 
-          <br /><br />
-        </>
-      )}
-
-      <button
-        onClick={logout}
-        style={{ padding: '10px 20px' }}
-      >
-        Cerrar sesión
-      </button>
+        <button
+          onClick={logout}
+          style={{
+            width: '100%',
+            padding: 14,
+            border: '1px solid #ddd',
+            borderRadius: 12,
+            background: '#f8f8f8',
+            fontSize: 16,
+            cursor: 'pointer'
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </main>
   )
 }
