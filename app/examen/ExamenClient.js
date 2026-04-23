@@ -18,6 +18,7 @@ export default function ExamenClient() {
   const [cancelled, setCancelled] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // 📥 cargar preguntas
   useEffect(() => {
     if (!examId) return
     loadQuestions()
@@ -33,6 +34,7 @@ export default function ExamenClient() {
     setLoading(false)
   }
 
+  // ⏱ TIMER
   useEffect(() => {
     let timer
 
@@ -49,6 +51,7 @@ export default function ExamenClient() {
     return () => clearInterval(timer)
   }, [started, finished, time])
 
+  // 🚨 ANTI-TRAMPA
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && started && !finished) {
@@ -68,6 +71,7 @@ export default function ExamenClient() {
       document.removeEventListener('visibilitychange', handleVisibility)
   }, [started, finished, warnings])
 
+  // 💾 GUARDAR RESULTADO + REGLAS DE NIVEL
   async function saveResult() {
     const {
       data: { user }
@@ -75,6 +79,7 @@ export default function ExamenClient() {
 
     if (!user) return
 
+    // 1. guardar resultado
     await supabase.from('exam_results').insert([
       {
         user_id: user.id,
@@ -84,12 +89,65 @@ export default function ExamenClient() {
         exam_id: examId
       }
     ])
+
+    // 2. obtener examen
+    const { data: exam } = await supabase
+      .from('exams')
+      .select('*')
+      .eq('id', examId)
+      .single()
+
+    if (!exam) return
+
+    // 3. regla de aprobación por nivel
+    let passScore = 75
+
+    if (exam.level === 'B1' || exam.level === 'B2') {
+      passScore = 80
+    }
+
+    if (exam.level === 'C1') {
+      passScore = 85
+    }
+
+    const passed = score >= passScore
+
+    // 4. guardar progreso
+    await supabase.from('student_progress').upsert([
+      {
+        user_id: user.id,
+        exam_id: examId,
+        status: passed ? 'passed' : 'failed',
+        score
+      }
+    ])
+
+    // 5. desbloqueo siguiente examen
+    if (passed) {
+      const { data: nextExam } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('order_index', exam.order_index + 1)
+        .single()
+
+      if (nextExam) {
+        await supabase.from('student_progress').upsert([
+          {
+            user_id: user.id,
+            exam_id: nextExam.id,
+            status: 'available',
+            score: 0
+          }
+        ])
+      }
+    }
   }
 
   useEffect(() => {
     if (finished) saveResult()
   }, [finished])
 
+  // 🧠 RESPONDER
   function answer(option) {
     if (option === questions[current].answer) {
       setScore((prev) => prev + 20)
@@ -104,8 +162,15 @@ export default function ExamenClient() {
     }
   }
 
+  const progress =
+    questions.length > 0
+      ? ((current + 1) / questions.length) * 100
+      : 0
+
+  // ⛔ loading
   if (loading) return <p>Cargando...</p>
 
+  // ▶️ start
   if (!started)
     return (
       <div style={{ padding: 30 }}>
@@ -116,6 +181,7 @@ export default function ExamenClient() {
       </div>
     )
 
+  // ❌ cancelado
   if (cancelled)
     return (
       <div>
@@ -123,6 +189,7 @@ export default function ExamenClient() {
       </div>
     )
 
+  // ✅ terminado
   if (finished)
     return (
       <div>
@@ -130,10 +197,35 @@ export default function ExamenClient() {
       </div>
     )
 
+  // ❗ sin preguntas
+  if (questions.length === 0)
+    return (
+      <div>
+        <h1>No hay preguntas</h1>
+      </div>
+    )
+
   return (
     <div style={{ padding: 30 }}>
-      <h1>Examen</h1>
+      <h1>Examen en curso</h1>
+
       <p>Tiempo: {time}</p>
+      <p>Advertencias: {warnings}/3</p>
+
+      <div style={{
+        width: '100%',
+        height: 10,
+        background: '#eee',
+        borderRadius: 20,
+        margin: '10px 0'
+      }}>
+        <div style={{
+          width: progress + '%',
+          height: '100%',
+          background: '#0A36FF',
+          borderRadius: 20
+        }} />
+      </div>
 
       <h2>{questions[current].question}</h2>
 
@@ -143,7 +235,15 @@ export default function ExamenClient() {
         questions[current].option_c,
         questions[current].option_d
       ].map((op) => (
-        <button key={op} onClick={() => answer(op)}>
+        <button
+          key={op}
+          onClick={() => answer(op)}
+          style={{
+            display: 'block',
+            marginTop: 10,
+            padding: 10
+          }}
+        >
           {op}
         </button>
       ))}
