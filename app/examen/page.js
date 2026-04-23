@@ -18,10 +18,9 @@ export default function Examen() {
   const [cancelled, setCancelled] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // 🔥 CARGAR PREGUNTAS SEGÚN EXAMEN
+  // 📥 cargar preguntas por examen
   useEffect(() => {
     if (!examId) return
-
     loadQuestions()
   }, [examId])
 
@@ -35,7 +34,7 @@ export default function Examen() {
     setLoading(false)
   }
 
-  // ⏱ TIMER
+  // ⏱ timer
   useEffect(() => {
     let timer
 
@@ -52,7 +51,7 @@ export default function Examen() {
     return () => clearInterval(timer)
   }, [started, finished, time])
 
-  // 🚨 ANTI TRAMPA (CAMBIO DE PESTAÑA)
+  // 🚨 anti-trampa
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden && started && !finished) {
@@ -66,23 +65,13 @@ export default function Examen() {
       }
     }
 
-    document.addEventListener(
-      'visibilitychange',
-      handleVisibility
-    )
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () =>
-      document.removeEventListener(
-        'visibilitychange',
-        handleVisibility
-      )
+      document.removeEventListener('visibilitychange', handleVisibility)
   }, [started, finished, warnings])
 
-  // 💾 GUARDAR RESULTADO
-  useEffect(() => {
-    if (finished) saveResult()
-  }, [finished])
-
+  // 💾 guardar resultado + desbloqueo
   async function saveResult() {
     const {
       data: { user }
@@ -90,6 +79,7 @@ export default function Examen() {
 
     if (!user) return
 
+    // 1. guardar resultado
     await supabase.from('exam_results').insert([
       {
         user_id: user.id,
@@ -99,9 +89,53 @@ export default function Examen() {
         exam_id: examId
       }
     ])
+
+    // 2. obtener examen actual
+    const { data: exam } = await supabase
+      .from('exams')
+      .select('*')
+      .eq('id', examId)
+      .single()
+
+    const passScore = 60
+    const passed = score >= passScore
+
+    // 3. guardar progreso
+    await supabase.from('student_progress').upsert([
+      {
+        user_id: user.id,
+        exam_id: examId,
+        status: passed ? 'passed' : 'failed',
+        score
+      }
+    ])
+
+    // 4. desbloquear siguiente examen
+    if (passed && exam) {
+      const { data: nextExam } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('order_index', exam.order_index + 1)
+        .single()
+
+      if (nextExam) {
+        await supabase.from('student_progress').upsert([
+          {
+            user_id: user.id,
+            exam_id: nextExam.id,
+            status: 'available',
+            score: 0
+          }
+        ])
+      }
+    }
   }
 
-  // 🧠 RESPONDER
+  useEffect(() => {
+    if (finished) saveResult()
+  }, [finished])
+
+  // 🧠 responder
   function answer(option) {
     if (option === questions[current].answer) {
       setScore((prev) => prev + 20)
@@ -121,7 +155,7 @@ export default function Examen() {
       ? ((current + 1) / questions.length) * 100
       : 0
 
-  // ⛔ LOADING
+  // ⛔ loading
   if (loading) {
     return (
       <main style={styles.page}>
@@ -132,7 +166,7 @@ export default function Examen() {
     )
   }
 
-  // ▶️ START
+  // ▶️ start
   if (!started) {
     return (
       <main style={styles.page}>
@@ -151,7 +185,7 @@ export default function Examen() {
     )
   }
 
-  // ❌ CANCELADO
+  // ❌ cancelado
   if (cancelled) {
     return (
       <main style={styles.page}>
@@ -163,7 +197,7 @@ export default function Examen() {
     )
   }
 
-  // ✅ FINALIZADO
+  // ✅ finalizado
   if (finished) {
     return (
       <main style={styles.page}>
@@ -176,13 +210,13 @@ export default function Examen() {
     )
   }
 
-  // ❗ SIN PREGUNTAS
+  // ❗ sin preguntas
   if (questions.length === 0) {
     return (
       <main style={styles.page}>
         <div style={styles.card}>
           <h1>No hay preguntas</h1>
-          <p>Este examen está vacío</p>
+          <p>Este examen no tiene contenido</p>
         </div>
       </main>
     )
@@ -206,13 +240,10 @@ export default function Examen() {
         </div>
 
         <p>
-          Pregunta {current + 1} de{' '}
-          {questions.length}
+          Pregunta {current + 1} de {questions.length}
         </p>
 
-        <h2>
-          {questions[current].question}
-        </h2>
+        <h2>{questions[current].question}</h2>
 
         {[
           questions[current].option_a,
@@ -236,14 +267,12 @@ export default function Examen() {
 const styles = {
   page: {
     minHeight: '100vh',
-    background:
-      'linear-gradient(135deg,#0A36FF,#111827)',
+    background: 'linear-gradient(135deg,#0A36FF,#111827)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20
   },
-
   card: {
     width: '100%',
     maxWidth: 600,
@@ -251,7 +280,6 @@ const styles = {
     borderRadius: 20,
     padding: 35
   },
-
   primary: {
     width: '100%',
     padding: 14,
@@ -260,7 +288,6 @@ const styles = {
     background: '#0A36FF',
     color: 'white'
   },
-
   option: {
     width: '100%',
     padding: 14,
@@ -268,7 +295,6 @@ const styles = {
     border: '1px solid #ddd',
     borderRadius: 12
   },
-
   bar: {
     width: '100%',
     height: 10,
@@ -276,7 +302,6 @@ const styles = {
     borderRadius: 20,
     margin: '15px 0'
   },
-
   fill: {
     height: '100%',
     background: '#0A36FF',
