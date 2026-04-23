@@ -39,7 +39,6 @@ export default function Examen() {
   const [finished, setFinished] = useState(false)
   const [warnings, setWarnings] = useState(0)
   const [cancelled, setCancelled] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     let timer
@@ -50,7 +49,7 @@ export default function Examen() {
       }, 1000)
     }
 
-    if (time === 0 && started) {
+    if (time === 0) {
       setFinished(true)
     }
 
@@ -63,8 +62,6 @@ export default function Examen() {
         const newWarnings = warnings + 1
         setWarnings(newWarnings)
 
-        alert('Advertencia: saliste de la pestaña (' + newWarnings + '/3)')
-
         if (newWarnings >= 3) {
           setCancelled(true)
           setFinished(true)
@@ -72,54 +69,40 @@ export default function Examen() {
       }
     }
 
-    document.addEventListener('visibilitychange', handleVisibility)
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibility
+    )
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
+    return () =>
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibility
+      )
   }, [started, finished, warnings])
 
   useEffect(() => {
-    if (finished && !saved) {
-      saveResult()
-    }
+    if (finished) saveResult()
   }, [finished])
 
   async function saveResult() {
     const {
-      data: { user },
-      error: userError
+      data: { user }
     } = await supabase.auth.getUser()
 
-    if (userError) {
-      alert(userError.message)
-      return
-    }
+    if (!user) return
 
-    if (!user) {
-      alert('No hay usuario logueado')
-      return
-    }
-
-    const { error } = await supabase.from('exam_results').insert([
+    await supabase.from('exam_results').insert([
       {
         user_id: user.id,
-        score: score,
-        cancelled: cancelled,
+        score,
+        cancelled,
         incidents: warnings
       }
     ])
-
-    if (error) {
-      alert(error.message)
-      return
-    }
-
-    alert('Resultado guardado correctamente')
-    setSaved(true)
   }
 
-  const answerQuestion = (option) => {
+  function answer(option) {
     if (option === questions[current].answer) {
       setScore((prev) => prev + 20)
     }
@@ -133,53 +116,139 @@ export default function Examen() {
     }
   }
 
+  const progress =
+    ((current + 1) / questions.length) * 100
+
   if (!started) {
     return (
-      <div style={{ padding: 30 }}>
-        <h1>Examen 🧠</h1>
-        <p>Duración: 5 minutos</p>
-        <button onClick={() => setStarted(true)}>
-          Iniciar examen
-        </button>
-      </div>
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h1>Examen AIFI 🧠</h1>
+          <p>Duración: 5 minutos</p>
+          <button
+            style={styles.primary}
+            onClick={() => setStarted(true)}
+          >
+            Iniciar examen
+          </button>
+        </div>
+      </main>
     )
   }
 
   if (cancelled) {
     return (
-      <div style={{ padding: 30 }}>
-        <h1>Examen cancelado</h1>
-        <p>Detectamos múltiples salidas de la pestaña.</p>
-      </div>
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h1>Examen Cancelado</h1>
+          <p>Se detectaron múltiples salidas.</p>
+        </div>
+      </main>
     )
   }
 
   if (finished) {
     return (
-      <div style={{ padding: 30 }}>
-        <h1>Resultado Final</h1>
-        <p>Puntaje: {score}/100</p>
-        <p>Intentando guardar resultado...</p>
-      </div>
+      <main style={styles.page}>
+        <div style={styles.card}>
+          <h1>Resultado Final</h1>
+          <h2>{score}/100</h2>
+          <p>Resultado guardado correctamente</p>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div style={{ padding: 30 }}>
-      <h1>Examen en curso</h1>
-      <p>Tiempo restante: {time}s</p>
-      <p>Advertencias: {warnings}/3</p>
-      <p>Pregunta {current + 1} de {questions.length}</p>
+    <main style={styles.page}>
+      <div style={styles.card}>
+        <h1>Examen en Curso</h1>
 
-      <h2>{questions[current].question}</h2>
+        <p>Tiempo restante: {time}s</p>
+        <p>Advertencias: {warnings}/3</p>
 
-      {questions[current].options.map((option) => (
-        <div key={option} style={{ marginBottom: 10 }}>
-          <button onClick={() => answerQuestion(option)}>
-            {option}
-          </button>
+        <div style={styles.bar}>
+          <div
+            style={{
+              ...styles.fill,
+              width: progress + '%'
+            }}
+          />
         </div>
-      ))}
-    </div>
+
+        <p>
+          Pregunta {current + 1} de {questions.length}
+        </p>
+
+        <h2>{questions[current].question}</h2>
+
+        {questions[current].options.map((op) => (
+          <button
+            key={op}
+            style={styles.option}
+            onClick={() => answer(op)}
+          >
+            {op}
+          </button>
+        ))}
+      </div>
+    </main>
   )
+}
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background:
+      'linear-gradient(135deg,#0A36FF,#111827)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: 600,
+    background: 'white',
+    borderRadius: 20,
+    padding: 35,
+    boxShadow:
+      '0 20px 60px rgba(0,0,0,0.25)'
+  },
+
+  primary: {
+    width: '100%',
+    padding: 14,
+    border: 'none',
+    borderRadius: 12,
+    background: '#0A36FF',
+    color: 'white',
+    fontSize: 16,
+    cursor: 'pointer'
+  },
+
+  option: {
+    width: '100%',
+    padding: 14,
+    marginTop: 12,
+    border: '1px solid #ddd',
+    borderRadius: 12,
+    background: '#f9f9f9',
+    cursor: 'pointer'
+  },
+
+  bar: {
+    width: '100%',
+    height: 10,
+    background: '#eee',
+    borderRadius: 20,
+    margin: '15px 0'
+  },
+
+  fill: {
+    height: '100%',
+    background: '#0A36FF',
+    borderRadius: 20
+  }
 }
