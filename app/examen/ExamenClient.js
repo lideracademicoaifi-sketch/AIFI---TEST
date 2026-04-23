@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { supabase } from '../lib/supabase'
 
 export default function ExamenClient() {
   const searchParams = useSearchParams()
