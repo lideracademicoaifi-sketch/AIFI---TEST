@@ -2,249 +2,171 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export default function ExamenClient() {
   const searchParams = useSearchParams()
   const examId = searchParams.get('exam')
 
-  const [started, setStarted] = useState(false)
-  const [time, setTime] = useState(300)
+  const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
   const [current, setCurrent] = useState(0)
-  const [score, setScore] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
-  const [warnings, setWarnings] = useState(0)
-  const [cancelled, setCancelled] = useState(false)
+  const [score, setScore] = useState(0)
+  const [time, setTime] = useState(300)
   const [loading, setLoading] = useState(true)
 
-  // 📥 cargar preguntas
   useEffect(() => {
-    if (!examId) return
-    loadQuestions()
+    if (examId) loadExam()
   }, [examId])
 
-  async function loadQuestions() {
-    const { data } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('exam_id', examId)
-
-    setQuestions(data || [])
-    setLoading(false)
-  }
-
-  // ⏱ TIMER
-  useEffect(() => {
-    let timer
-
-    if (started && !finished && time > 0) {
-      timer = setInterval(() => {
-        setTime((prev) => prev - 1)
-      }, 1000)
-    }
-
-    if (time === 0 && started) {
-      setFinished(true)
-    }
-
-    return () => clearInterval(timer)
-  }, [started, finished, time])
-
-  // 🚨 ANTI-TRAMPA
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden && started && !finished) {
-        const newWarnings = warnings + 1
-        setWarnings(newWarnings)
-
-        if (newWarnings >= 3) {
-          setCancelled(true)
-          setFinished(true)
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    return () =>
-      document.removeEventListener('visibilitychange', handleVisibility)
-  }, [started, finished, warnings])
-
-  // 💾 GUARDAR RESULTADO + REGLAS DE NIVEL
-  async function saveResult() {
-    const {
-      data: { user }
-    } = await supabase.auth.getUser()
-
-    if (!user) return
-
-    // 1. guardar resultado
-    await supabase.from('exam_results').insert([
-      {
-        user_id: user.id,
-        score,
-        cancelled,
-        incidents: warnings,
-        exam_id: examId
-      }
-    ])
-
-    // 2. obtener examen
-    const { data: exam } = await supabase
+  async function loadExam() {
+    const { data: examData } = await supabase
       .from('exams')
       .select('*')
       .eq('id', examId)
       .single()
 
-    if (!exam) return
+    const { data: questionData } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('exam_id', examId)
+      .order('sort_order')
 
-    // 3. regla de aprobación por nivel
-    let passScore = 75
-
-    if (exam.level === 'B1' || exam.level === 'B2') {
-      passScore = 80
-    }
-
-    if (exam.level === 'C1') {
-      passScore = 85
-    }
-
-    const passed = score >= passScore
-
-    // 4. guardar progreso
-    await supabase.from('student_progress').upsert([
-      {
-        user_id: user.id,
-        exam_id: examId,
-        status: passed ? 'passed' : 'failed',
-        score
-      }
-    ])
-
-    // 5. desbloqueo siguiente examen
-    if (passed) {
-      const { data: nextExam } = await supabase
-        .from('exams')
-        .select('*')
-        .eq('order_index', exam.order_index + 1)
-        .single()
-
-      if (nextExam) {
-        await supabase.from('student_progress').upsert([
-          {
-            user_id: user.id,
-            exam_id: nextExam.id,
-            status: 'available',
-            score: 0
-          }
-        ])
-      }
-    }
+    setExam(examData)
+    setQuestions(questionData || [])
+    setTime((examData?.time_limit || 5) * 60)
+    setLoading(false)
   }
 
   useEffect(() => {
-    if (finished) saveResult()
-  }, [finished])
+    if (!started || finished) return
 
-  // 🧠 RESPONDER
-  function answer(option) {
-    if (option === questions[current].answer) {
-      setScore((prev) => prev + 20)
-    }
+    const timer = setInterval(() => {
+      setTime(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          submitExam()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
 
-    const next = current + 1
+    return () => clearInterval(timer)
+  }, [started, finished])
 
-    if (next < questions.length) {
-      setCurrent(next)
+  function chooseAnswer(option) {
+    setAnswers({
+      ...answers,
+      [questions[current].id]: option
+    })
+
+    if (current + 1 < questions.length) {
+      setCurrent(current + 1)
     } else {
-      setFinished(true)
+      submitExam()
     }
   }
 
-  const progress =
-    questions.length > 0
-      ? ((current + 1) / questions.length) * 100
-      : 0
+  async function submitExam() {
+    let correct = 0
 
-  // ⛔ loading
-  if (loading) return <p>Cargando...</p>
+    questions.forEach(q => {
+      if (answers[q.id] === q.correct_answer) {
+        correct++
+      }
+    })
 
-  // ▶️ start
+    const percentage = Math.round(
+      (correct / questions.length) * 100
+    )
+
+    setScore(percentage)
+    setFinished(true)
+
+    const {
+      data: { user }
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      await supabase.from('exam_results').insert({
+        user_id: user.id,
+        exam_id: examId,
+        score: correct,
+        total_questions: questions.length,
+        correct_answers: correct,
+        passed: percentage >= exam.passing_score,
+        completed: true,
+        finished_at: new Date()
+      })
+    }
+  }
+
+  if (loading) return <div className="p-10">Loading...</div>
+
   if (!started)
     return (
-      <div style={{ padding: 30 }}>
-        <h1>Examen AIFI 🧠</h1>
-        <button onClick={() => setStarted(true)}>
-          Iniciar
+      <div className="p-10 max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold mb-4">
+          {exam.title}
+        </h1>
+        <p>{exam.description}</p>
+
+        <button
+          onClick={() => setStarted(true)}
+          className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl"
+        >
+          Start Exam
         </button>
       </div>
     )
 
-  // ❌ cancelado
-  if (cancelled)
-    return (
-      <div>
-        <h1>Examen cancelado</h1>
-      </div>
-    )
-
-  // ✅ terminado
   if (finished)
     return (
-      <div>
-        <h1>Resultado: {score}</h1>
+      <div className="p-10 text-center">
+        <h1 className="text-4xl font-bold">
+          {score >= exam.passing_score
+            ? 'PASSED 🎉'
+            : 'FAILED 😢'}
+        </h1>
+
+        <p className="mt-4 text-xl">
+          Score: {score}%
+        </p>
       </div>
     )
 
-  // ❗ sin preguntas
-  if (questions.length === 0)
-    return (
-      <div>
-        <h1>No hay preguntas</h1>
-      </div>
-    )
+  const q = questions[current]
 
   return (
-    <div style={{ padding: 30 }}>
-      <h1>Examen en curso</h1>
+    <div className="p-10 max-w-2xl mx-auto">
+      <div className="flex justify-between mb-6">
+        <span>
+          Question {current + 1}/{questions.length}
+        </span>
 
-      <p>Tiempo: {time}</p>
-      <p>Advertencias: {warnings}/3</p>
-
-      <div style={{
-        width: '100%',
-        height: 10,
-        background: '#eee',
-        borderRadius: 20,
-        margin: '10px 0'
-      }}>
-        <div style={{
-          width: progress + '%',
-          height: '100%',
-          background: '#0A36FF',
-          borderRadius: 20
-        }} />
+        <span>{time}s</span>
       </div>
 
-      <h2>{questions[current].question}</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {q.question}
+      </h2>
 
       {[
-        questions[current].option_a,
-        questions[current].option_b,
-        questions[current].option_c,
-        questions[current].option_d
-      ].map((op) => (
+        q.option_a,
+        q.option_b,
+        q.option_c,
+        q.option_d
+      ].map(option => (
         <button
-          key={op}
-          onClick={() => answer(op)}
-          style={{
-            display: 'block',
-            marginTop: 10,
-            padding: 10
-          }}
+          key={option}
+          onClick={() => chooseAnswer(option)}
+          className="block w-full border p-4 rounded-xl mb-3 hover:bg-gray-100"
         >
-          {op}
+          {option}
         </button>
       ))}
     </div>
