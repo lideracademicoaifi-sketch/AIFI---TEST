@@ -17,6 +17,7 @@ export default function ExamenClient() {
   const [score, setScore] = useState(0)
   const [time, setTime] = useState(300)
   const [loading, setLoading] = useState(true)
+  const [warnings, setWarnings] = useState(0)
 
   useEffect(() => {
     if (examId) loadExam()
@@ -33,12 +34,28 @@ export default function ExamenClient() {
       .from('questions')
       .select('*')
       .eq('exam_id', examId)
-      .order('sort_order')
 
     setExam(examData)
     setQuestions(questionData || [])
     setTime((examData?.time_limit || 5) * 60)
     setLoading(false)
+  }
+
+  async function logEvent(type, details) {
+    await supabase.from('proctor_logs').insert({
+      event_type: type,
+      details: details
+    })
+  }
+
+  async function startExam() {
+    setStarted(true)
+
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen()
+    }
+
+    await logEvent('exam_started', 'Exam started')
   }
 
   useEffect(() => {
@@ -57,6 +74,96 @@ export default function ExamenClient() {
 
     return () => clearInterval(timer)
   }, [started, finished])
+
+  useEffect(() => {
+    if (!started || finished) return
+
+    function handleVisibility() {
+      if (document.hidden) {
+        fraudWarning('Changed tab')
+      }
+    }
+
+    function handleCopy(e) {
+      e.preventDefault()
+      fraudWarning('Copy blocked')
+    }
+
+    function handlePaste(e) {
+      e.preventDefault()
+      fraudWarning('Paste blocked')
+    }
+
+    function handleRightClick(e) {
+      e.preventDefault()
+      fraudWarning('Right click blocked')
+    }
+
+    function handleFullscreen() {
+      if (!document.fullscreenElement) {
+        fraudWarning('Exited fullscreen')
+      }
+    }
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibility
+    )
+
+    document.addEventListener('copy', handleCopy)
+    document.addEventListener('paste', handlePaste)
+    document.addEventListener(
+      'contextmenu',
+      handleRightClick
+    )
+
+    document.addEventListener(
+      'fullscreenchange',
+      handleFullscreen
+    )
+
+    return () => {
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibility
+      )
+
+      document.removeEventListener('copy', handleCopy)
+      document.removeEventListener('paste', handlePaste)
+
+      document.removeEventListener(
+        'contextmenu',
+        handleRightClick
+      )
+
+      document.removeEventListener(
+        'fullscreenchange',
+        handleFullscreen
+      )
+    }
+  }, [started, finished, warnings])
+
+  async function fraudWarning(reason) {
+    const newWarnings = warnings + 1
+    setWarnings(newWarnings)
+
+    await logEvent('warning', reason)
+
+    alert(
+      '⚠ Advertencia: ' +
+        reason +
+        ' (' +
+        newWarnings +
+        '/3)'
+    )
+
+    if (newWarnings >= 3) {
+      alert(
+        'Examen finalizado por comportamiento sospechoso.'
+      )
+      submitExam()
+    }
+  }
 
   function chooseAnswer(option) {
     setAnswers({
@@ -87,6 +194,11 @@ export default function ExamenClient() {
     setScore(percentage)
     setFinished(true)
 
+    await logEvent(
+      'exam_finished',
+      'Score: ' + percentage + '%'
+    )
+
     const {
       data: { user }
     } = await supabase.auth.getUser()
@@ -113,13 +225,26 @@ export default function ExamenClient() {
         <h1 className="text-3xl font-bold mb-4">
           {exam.title}
         </h1>
+
         <p>{exam.description}</p>
 
+        <p className="mt-4 text-red-600">
+          Reglas:
+          <br />
+          • No cambiar pestaña
+          <br />
+          • No salir fullscreen
+          <br />
+          • No copiar
+          <br />
+          • 3 advertencias = auto cierre
+        </p>
+
         <button
-          onClick={() => setStarted(true)}
+          onClick={startExam}
           className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl"
         >
-          Start Exam
+          Iniciar Examen
         </button>
       </div>
     )
@@ -149,6 +274,10 @@ export default function ExamenClient() {
         </span>
 
         <span>{time}s</span>
+      </div>
+
+      <div className="mb-4 text-red-600">
+        Warnings: {warnings}/3
       </div>
 
       <h2 className="text-2xl font-bold mb-6">
