@@ -9,6 +9,8 @@ export default function Admin() {
 
   const [results, setResults] = useState([])
   const [questions, setQuestions] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [logs, setLogs] = useState([])
 
   const [question, setQuestion] = useState('')
   const [a, setA] = useState('')
@@ -31,10 +33,13 @@ export default function Admin() {
       return
     }
 
-    if (
-      user.email !==
-      'lideracademicoaifi@gmail.com'
-    ) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
       router.push('/dashboard')
       return
     }
@@ -43,20 +48,32 @@ export default function Admin() {
   }
 
   async function loadData() {
-    const { data } = await supabase
+    const { data: r } = await supabase
       .from('exam_results')
       .select('*')
-
-    setResults(data || [])
+      .order('finished_at', {
+        ascending: false
+      })
 
     const { data: q } = await supabase
       .from('questions')
+      .select('*')
+
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('*')
+
+    const { data: l } = await supabase
+      .from('proctor_logs')
       .select('*')
       .order('created_at', {
         ascending: false
       })
 
+    setResults(r || [])
     setQuestions(q || [])
+    setProfiles(p || [])
+    setLogs(l || [])
   }
 
   async function addQuestion() {
@@ -90,10 +107,30 @@ export default function Admin() {
     loadData()
   }
 
+  const totalStudents = profiles.filter(
+    x => x.role === 'student'
+  ).length
+
+  const totalResults = results.length
+
+  const avg =
+    results.length > 0
+      ? Math.round(
+          results.reduce(
+            (acc, item) =>
+              acc +
+              (item.correct_answers /
+                item.total_questions) *
+                100,
+            0
+          ) / results.length
+        )
+      : 0
+
   return (
     <main style={styles.page}>
       <div style={styles.box}>
-        <h1>Panel Admin 🔐</h1>
+        <h1>ADMIN MASTER 🔐</h1>
 
         <button
           onClick={() =>
@@ -101,8 +138,26 @@ export default function Admin() {
           }
           style={styles.btnDark}
         >
-          Volver Dashboard
+          Volver
         </button>
+
+        <div style={styles.grid}>
+          <div style={styles.stat}>
+            👨‍🎓 Estudiantes: {totalStudents}
+          </div>
+
+          <div style={styles.stat}>
+            📝 Exámenes: {totalResults}
+          </div>
+
+          <div style={styles.stat}>
+            📈 Promedio: {avg}%
+          </div>
+
+          <div style={styles.stat}>
+            🚨 Alertas: {logs.length}
+          </div>
+        </div>
 
         <hr />
 
@@ -158,7 +213,7 @@ export default function Admin() {
           onClick={addQuestion}
           style={styles.btnBlue}
         >
-          Guardar Pregunta
+          Guardar
         </button>
 
         <hr />
@@ -170,9 +225,7 @@ export default function Admin() {
             key={item.id}
             style={styles.card}
           >
-            <p>
-              <b>{item.question}</b>
-            </p>
+            <b>{item.question}</b>
 
             <p>
               A) {item.option_a}
@@ -212,11 +265,26 @@ const styles = {
   },
 
   box: {
-    maxWidth: 900,
+    maxWidth: 1100,
     margin: '0 auto',
     background: 'white',
     padding: 30,
     borderRadius: 20
+  },
+
+  grid: {
+    display: 'grid',
+    gridTemplateColumns:
+      'repeat(auto-fit,minmax(200px,1fr))',
+    gap: 15,
+    marginBottom: 25
+  },
+
+  stat: {
+    background: '#f5f5f5',
+    padding: 20,
+    borderRadius: 15,
+    fontWeight: 'bold'
   },
 
   input: {
