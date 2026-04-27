@@ -32,13 +32,19 @@ export default function Login() {
 
     const userId = data.user.id
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('role')
       .eq('id', userId)
       .single()
 
-    if (profile?.is_admin) {
+    if (profileError || !profile) {
+      alert('Perfil no encontrado')
+      setLoading(false)
+      return
+    }
+
+    if (profile.role === 'admin') {
       router.push('/admin')
     } else {
       router.push('/dashboard')
@@ -61,7 +67,7 @@ export default function Login() {
 
     setLoading(true)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password
     })
@@ -70,6 +76,18 @@ export default function Login() {
       alert(error.message)
       setLoading(false)
       return
+    }
+
+    const user = data.user
+
+    if (user) {
+      await supabase.from('profiles').insert([
+        {
+          id: user.id,
+          email: user.email,
+          role: 'student'
+        }
+      ])
     }
 
     alert('Cuenta creada correctamente. Ahora inicia sesión.')
