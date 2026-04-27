@@ -12,9 +12,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   async function signIn() {
+    if (!email || !password) {
+      alert('Completa correo y contraseña')
+      return
+    }
+
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
@@ -25,11 +30,35 @@ export default function Login() {
       return
     }
 
-    router.push('/dashboard')
+    const userId = data.user.id
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single()
+
+    if (profile?.is_admin) {
+      router.push('/admin')
+    } else {
+      router.push('/dashboard')
+    }
+
     router.refresh()
+    setLoading(false)
   }
 
   async function signUp() {
+    if (!email || !password) {
+      alert('Completa correo y contraseña')
+      return
+    }
+
+    if (password.length < 6) {
+      alert('La contraseña debe tener mínimo 6 caracteres')
+      return
+    }
+
     setLoading(true)
 
     const { error } = await supabase.auth.signUp({
@@ -43,7 +72,7 @@ export default function Login() {
       return
     }
 
-    alert('Cuenta creada correctamente')
+    alert('Cuenta creada correctamente. Ahora inicia sesión.')
     setLoading(false)
   }
 
@@ -51,8 +80,7 @@ export default function Login() {
     <main
       style={{
         minHeight: '100vh',
-        background:
-          'linear-gradient(135deg,#0A36FF,#111827)',
+        background: 'linear-gradient(135deg,#0A36FF,#111827)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -66,8 +94,7 @@ export default function Login() {
           background: 'white',
           borderRadius: 22,
           padding: 35,
-          boxShadow:
-            '0 20px 60px rgba(0,0,0,0.25)'
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)'
         }}
       >
         <h1
@@ -128,7 +155,7 @@ export default function Login() {
             marginBottom: 12
           }}
         >
-          {loading ? 'Cargando...' : 'Entrar'}
+          {loading ? 'Entrando...' : 'Entrar'}
         </button>
 
         <button
