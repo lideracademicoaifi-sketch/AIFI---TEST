@@ -58,6 +58,9 @@ export default function Admin() {
     const { data: q } = await supabase
       .from('questions')
       .select('*')
+      .order('sort_order', {
+        ascending: true
+      })
 
     const { data: p } = await supabase
       .from('profiles')
@@ -77,16 +80,26 @@ export default function Admin() {
   }
 
   async function addQuestion() {
-    await supabase.from('questions').insert([
-      {
-        question,
-        option_a: a,
-        option_b: b,
-        option_c: c,
-        option_d: d,
-        answer
-      }
-    ])
+    const { error } = await supabase
+      .from('questions')
+      .insert([
+        {
+          exam_id: 1,
+          question: question,
+          options: [a, b, c, d],
+          correct_answer: answer,
+          explanation: '',
+          points: 1,
+          sort_order: Date.now()
+        }
+      ])
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    alert('Pregunta creada correctamente')
 
     setQuestion('')
     setA('')
@@ -99,10 +112,17 @@ export default function Admin() {
   }
 
   async function deleteQuestion(id) {
-    await supabase
+    const { error } = await supabase
       .from('questions')
       .delete()
       .eq('id', id)
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    alert('Pregunta eliminada')
 
     loadData()
   }
@@ -201,7 +221,7 @@ export default function Admin() {
         />
 
         <input
-          placeholder="Respuesta correcta"
+          placeholder="Respuesta correcta EXACTA"
           value={answer}
           onChange={(e) =>
             setAnswer(e.target.value)
@@ -213,7 +233,7 @@ export default function Admin() {
           onClick={addQuestion}
           style={styles.btnBlue}
         >
-          Guardar
+          Guardar Pregunta
         </button>
 
         <hr />
@@ -227,18 +247,22 @@ export default function Admin() {
           >
             <b>{item.question}</b>
 
-            <p>
-              A) {item.option_a}
-              <br />
-              B) {item.option_b}
-              <br />
-              C) {item.option_c}
-              <br />
-              D) {item.option_d}
-            </p>
+            <div style={{ marginTop: 10 }}>
+              {item.options?.map(
+                (op, index) => (
+                  <div key={index}>
+                    {String.fromCharCode(
+                      65 + index
+                    )}
+                    ) {op}
+                  </div>
+                )
+              )}
+            </div>
 
-            <p>
-              Correcta: {item.answer}
+            <p style={{ marginTop: 10 }}>
+              Correcta:{' '}
+              {item.correct_answer}
             </p>
 
             <button
