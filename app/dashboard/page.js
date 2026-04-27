@@ -8,6 +8,14 @@ export default function Dashboard() {
   const [email, setEmail] = useState('')
   const router = useRouter()
 
+  const levels = [
+    { id: 'A1', name: 'A1 - STARTERS' },
+    { id: 'A2', name: 'A2 - EXPLORERS' },
+    { id: 'B1', name: 'B1 - BUILDERS' },
+    { id: 'B2', name: 'B2 - MASTERS' },
+    { id: 'C1', name: 'C1 - EXPERTS' }
+  ]
+
   useEffect(() => {
     checkUser()
   }, [])
@@ -30,106 +38,118 @@ export default function Dashboard() {
     router.push('/login')
   }
 
-  const isAdmin =
-    email === 'lideracademicoaifi@gmail.com'
-
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background:
-          'linear-gradient(135deg,#0A36FF,#111827)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 500,
-          background: 'white',
-          borderRadius: 20,
-          padding: 35,
-          boxShadow:
-            '0 20px 60px rgba(0,0,0,0.25)'
-        }}
-      >
-        <h1
-          style={{
-            marginBottom: 10,
-            color: '#0A36FF',
-            fontSize: 32
-          }}
-        >
-          Dashboard AIFI
+    <main style={styles.page}>
+      <div style={styles.card}>
+
+        <h1 style={styles.title}>
+          🎓 Dashboard AIFI
         </h1>
 
-        <p style={{ color: '#555' }}>
+        <p style={styles.subtitle}>
           Bienvenido
         </p>
 
-        <p
-          style={{
-            fontWeight: 'bold',
-            marginBottom: 30
-          }}
-        >
+        <p style={styles.email}>
           {email}
         </p>
 
-        <button
-          onClick={() => router.push('/examen')}
-          style={{
-            width: '100%',
-            padding: 14,
-            border: 'none',
-            borderRadius: 12,
-            background: '#0A36FF',
-            color: 'white',
-            fontSize: 16,
-            cursor: 'pointer',
-            marginBottom: 15
-          }}
-        >
-          Ir al Examen
-        </button>
+        <h2 style={styles.sectionTitle}>
+          📚 Selecciona tu nivel
+        </h2>
 
-        {isAdmin && (
+        <div style={styles.grid}>
+          {levels.map((level) => (
+            <button
+              key={level.id}
+              onClick={() =>
+                router.push(`/level/${level.id}`)
+              }
+              style={styles.levelCard}
+            >
+              {level.name}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 25 }}>
           <button
-            onClick={() => router.push('/admin')}
-            style={{
-              width: '100%',
-              padding: 14,
-              border: 'none',
-              borderRadius: 12,
-              background: '#111827',
-              color: 'white',
-              fontSize: 16,
-              cursor: 'pointer',
-              marginBottom: 15
-            }}
+            onClick={logout}
+            style={styles.logout}
           >
-            Panel Admin
+            Cerrar sesión
           </button>
-        )}
+        </div>
 
-        <button
-          onClick={logout}
-          style={{
-            width: '100%',
-            padding: 14,
-            border: '1px solid #ddd',
-            borderRadius: 12,
-            background: '#f8f8f8',
-            fontSize: 16,
-            cursor: 'pointer'
-          }}
-        >
-          Cerrar sesión
-        </button>
       </div>
     </main>
   )
+}
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background:
+      'linear-gradient(135deg,#0A36FF,#111827)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: 650,
+    background: 'white',
+    borderRadius: 20,
+    padding: 35,
+    boxShadow: '0 20px 60px rgba(0,0,0,0.25)'
+  },
+
+  title: {
+    fontSize: 32,
+    color: '#0A36FF',
+    marginBottom: 5
+  },
+
+  subtitle: {
+    color: '#666'
+  },
+
+  email: {
+    fontWeight: 'bold',
+    marginBottom: 25
+  },
+
+  sectionTitle: {
+    marginTop: 10,
+    marginBottom: 15
+  },
+
+  grid: {
+    display: 'grid',
+    gridTemplateColumns:
+      'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: 15
+  },
+
+  levelCard: {
+    padding: 18,
+    borderRadius: 14,
+    border: 'none',
+    background: '#0A36FF',
+    color: 'white',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: '0.2s'
+  },
+
+  logout: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    border: '1px solid #ddd',
+    background: '#f5f5f5',
+    cursor: 'pointer'
+  }
 }
