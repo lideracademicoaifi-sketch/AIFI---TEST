@@ -11,6 +11,9 @@ export default function Admin() {
   const [questions, setQuestions] = useState([])
   const [profiles, setProfiles] = useState([])
   const [logs, setLogs] = useState([])
+  const [exams, setExams] = useState([])
+
+  const [selectedExam, setSelectedExam] = useState('')
 
   const [question, setQuestion] = useState('')
   const [a, setA] = useState('')
@@ -18,9 +21,6 @@ export default function Admin() {
   const [c, setC] = useState('')
   const [d, setD] = useState('')
   const [answer, setAnswer] = useState('')
-
-  // 🔥 FIX: UUID del examen correcto
-  const examId = '862f94d0-6379-4775-a3a7-d9f62682c0a2'
 
   useEffect(() => {
     checkAccess()
@@ -70,19 +70,30 @@ export default function Admin() {
       .select('*')
       .order('created_at', { ascending: false })
 
+    const { data: e } = await supabase
+      .from('exams')
+      .select('*')
+      .order('title', { ascending: true })
+
     setResults(r || [])
     setQuestions(q || [])
     setProfiles(p || [])
     setLogs(l || [])
+    setExams(e || [])
   }
 
   async function addQuestion() {
+    if (!selectedExam) {
+      alert('Selecciona un examen primero')
+      return
+    }
+
     const { error } = await supabase
       .from('questions')
       .insert([
         {
-          exam_id: examId, // ✅ FIX UUID AQUÍ
-          question: question,
+          exam_id: selectedExam,
+          question,
           options: [a, b, c, d],
           correct_answer: answer,
           explanation: '',
@@ -123,10 +134,7 @@ export default function Admin() {
     loadData()
   }
 
-  const totalStudents = profiles.filter(
-    x => x.role === 'student'
-  ).length
-
+  const totalStudents = profiles.filter(x => x.role === 'student').length
   const totalResults = results.length
 
   const avg =
@@ -135,9 +143,7 @@ export default function Admin() {
           results.reduce(
             (acc, item) =>
               acc +
-              (item.correct_answers /
-                item.total_questions) *
-                100,
+              (item.correct_answers / item.total_questions) * 100,
             0
           ) / results.length
         )
@@ -164,6 +170,26 @@ export default function Admin() {
 
         <hr />
 
+        {/* 🔥 SELECT EXAMEN */}
+        <h2>Seleccionar Examen</h2>
+
+        <select
+          value={selectedExam}
+          onChange={(e) => setSelectedExam(e.target.value)}
+          style={styles.input}
+        >
+          <option value="">-- Selecciona un examen --</option>
+
+          {exams.map((ex) => (
+            <option key={ex.id} value={ex.id}>
+              {ex.title} ({ex.level})
+            </option>
+          ))}
+        </select>
+
+        <hr />
+
+        {/* 🧠 CREAR PREGUNTA */}
         <h2>Crear Pregunta</h2>
 
         <input
@@ -179,7 +205,7 @@ export default function Admin() {
         <input placeholder="Opción D" value={d} onChange={(e) => setD(e.target.value)} style={styles.input} />
 
         <input
-          placeholder="Respuesta correcta EXACTA"
+          placeholder="Respuesta correcta"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
           style={styles.input}
