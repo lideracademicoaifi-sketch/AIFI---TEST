@@ -9,11 +9,11 @@ export default function Dashboard() {
   const router = useRouter()
 
   const levels = [
-    { id: 'A1', name: 'A1 - STARTERS' },
-    { id: 'A2', name: 'A2 - EXPLORERS' },
-    { id: 'B1', name: 'B1 - BUILDERS' },
-    { id: 'B2', name: 'B2 - MASTERS' },
-    { id: 'C1', name: 'C1 - EXPERTS' }
+    { id: 'A1', name: 'Nivel A1 - Básico' },
+    { id: 'A2', name: 'Nivel A2 - Elemental' },
+    { id: 'B1', name: 'Nivel B1 - Intermedio' },
+    { id: 'B2', name: 'Nivel B2 - Intermedio Alto' },
+    { id: 'C1', name: 'Nivel C1 - Avanzado' }
   ]
 
   useEffect(() => {
@@ -43,11 +43,11 @@ export default function Dashboard() {
       <div style={styles.card}>
 
         <h1 style={styles.title}>
-          🎓 Dashboard AIFI
+          🏫 Plataforma de Exámenes AIFI
         </h1>
 
         <p style={styles.subtitle}>
-          Bienvenido
+          Bienvenido estudiante
         </p>
 
         <p style={styles.email}>
@@ -55,8 +55,12 @@ export default function Dashboard() {
         </p>
 
         <h2 style={styles.sectionTitle}>
-          📚 Selecciona tu nivel
+          📚 Selecciona el nivel de evaluación
         </h2>
+
+        <p style={styles.note}>
+          Cada nivel contiene exámenes oficiales disponibles.
+        </p>
 
         <div style={styles.grid}>
           {levels.map((level) => (
@@ -72,14 +76,9 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div style={{ marginTop: 25 }}>
-          <button
-            onClick={logout}
-            style={styles.logout}
-          >
-            Cerrar sesión
-          </button>
-        </div>
+        <button onClick={logout} style={styles.logout}>
+          Cerrar sesión
+        </button>
 
       </div>
     </main>
@@ -99,21 +98,20 @@ const styles = {
 
   card: {
     width: '100%',
-    maxWidth: 650,
+    maxWidth: 700,
     background: 'white',
     borderRadius: 20,
-    padding: 35,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.25)'
+    padding: 35
   },
 
   title: {
-    fontSize: 32,
+    fontSize: 28,
     color: '#0A36FF',
     marginBottom: 5
   },
 
   subtitle: {
-    color: '#666'
+    color: '#555'
   },
 
   email: {
@@ -123,33 +121,38 @@ const styles = {
 
   sectionTitle: {
     marginTop: 10,
-    marginBottom: 15
+    marginBottom: 5
+  },
+
+  note: {
+    fontSize: 13,
+    color: '#777',
+    marginBottom: 20
   },
 
   grid: {
     display: 'grid',
     gridTemplateColumns:
-      'repeat(auto-fit, minmax(200px, 1fr))',
+      'repeat(auto-fit, minmax(220px, 1fr))',
     gap: 15
   },
 
   levelCard: {
     padding: 18,
-    borderRadius: 14,
-    border: 'none',
-    background: '#0A36FF',
-    color: 'white',
-    fontWeight: 'bold',
+    borderRadius: 12,
+    border: '1px solid #ddd',
+    background: '#f9f9f9',
     cursor: 'pointer',
-    transition: '0.2s'
+    fontWeight: 'bold'
   },
 
   logout: {
+    marginTop: 25,
     width: '100%',
     padding: 14,
     borderRadius: 12,
     border: '1px solid #ddd',
-    background: '#f5f5f5',
+    background: '#eee',
     cursor: 'pointer'
   }
 }
